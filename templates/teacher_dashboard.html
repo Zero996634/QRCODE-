@@ -151,13 +151,15 @@ let sessionDuration = 30;
 function captureLocation() {
   const statusEl = document.getElementById('locStatus');
   statusEl.style.display = 'block';
-  statusEl.innerHTML = '<div class="loc-indicator pulse">📡 Getting your location...</div>';
+  statusEl.innerHTML = '<div class="loc-indicator pulse">📡 Getting GPS location (may take a few seconds)...</div>';
 
   LocationHelper.get(coords => {
     document.getElementById('latInput').value = coords.lat.toFixed(7);
     document.getElementById('lonInput').value = coords.lon.toFixed(7);
     document.getElementById('saveLocBtn').disabled = false;
-    statusEl.innerHTML = `<div class="loc-indicator">✅ Location captured — Accuracy: ±${Math.round(coords.acc)}m</div>`;
+    const accRound = Math.round(coords.acc);
+    const quality = accRound <= 50 ? '🛰️ GPS Lock' : accRound <= 200 ? '📡 Good' : '⚠️ Low accuracy';
+    statusEl.innerHTML = `<div class="loc-indicator">✅ ${quality} — Accuracy: ±${accRound}m</div>`;
   }, err => {
     statusEl.innerHTML = `<div class="loc-indicator error">❌ ${err}</div>`;
   });

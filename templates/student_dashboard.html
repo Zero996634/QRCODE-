@@ -135,12 +135,14 @@ function captureAndGenerate(sessionId, classId) {
   const msgEl = document.getElementById('msg-' + sessionId);
   const qrEl  = document.getElementById('qr-' + sessionId);
 
-  locEl.innerHTML = '<div class="loc-indicator pulse">📡 Getting your location...</div>';
+  locEl.innerHTML = '<div class="loc-indicator pulse">📡 Getting GPS location (may take a few seconds)...</div>';
   qrEl.style.display = 'none';
   msgEl.innerHTML = '';
 
   LocationHelper.get(coords => {
-    locEl.innerHTML = `<div class="loc-indicator">✅ Location: ${coords.lat.toFixed(5)}, ${coords.lon.toFixed(5)} (±${Math.round(coords.acc)}m)</div>`;
+    const accRound = Math.round(coords.acc);
+    const quality = accRound <= 50 ? '🛰️ GPS Lock' : accRound <= 200 ? '📡 Good' : '⚠️ Low accuracy';
+    locEl.innerHTML = `<div class="loc-indicator">✅ ${quality}: ${coords.lat.toFixed(6)}, ${coords.lon.toFixed(6)} (±${accRound}m)</div>`;
 
     fetch('/student/generate-qr', {
       method: 'POST',
