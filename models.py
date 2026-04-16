@@ -25,7 +25,7 @@ class Teacher(db.Model):
     name = db.Column(db.String(120), nullable=False)
     email = db.Column(db.String(120), unique=True, nullable=False)
     password_hash = db.Column(db.String(256), nullable=False)
-    classes = db.relationship("Class", backref="teacher", lazy=True)
+    classes = db.relationship("Class", backref="teacher", lazy=True, cascade="all, delete-orphan")
 
     def set_password(self, pw: str):
         self.password_hash = generate_password_hash(pw)
@@ -41,7 +41,7 @@ class Student(db.Model):
     email = db.Column(db.String(120), unique=True, nullable=False)
     roll_number = db.Column(db.String(50), unique=True, nullable=False)
     password_hash = db.Column(db.String(256), nullable=False)
-    attendance_records = db.relationship("Attendance", backref="student", lazy=True)
+    attendance_records = db.relationship("Attendance", backref="student", lazy=True, cascade="all, delete-orphan")
 
     def set_password(self, pw: str):
         self.password_hash = generate_password_hash(pw)
@@ -59,7 +59,7 @@ class Class(db.Model):
     teacher_id = db.Column(db.Integer, db.ForeignKey("teachers.id"), nullable=False)
     latitude = db.Column(db.Float, nullable=True)
     longitude = db.Column(db.Float, nullable=True)
-    sessions = db.relationship("AttendanceSession", backref="cls", lazy=True)
+    sessions = db.relationship("AttendanceSession", backref="cls", lazy=True, cascade="all, delete-orphan")
 
 
 class AttendanceSession(db.Model):
@@ -70,7 +70,7 @@ class AttendanceSession(db.Model):
     start_time = db.Column(db.DateTime, default=datetime.utcnow)
     duration_seconds = db.Column(db.Integer, default=30)
     active = db.Column(db.Boolean, default=True)
-    attendance_records = db.relationship("Attendance", backref="session", lazy=True)
+    attendance_records = db.relationship("Attendance", backref="session", lazy=True, cascade="all, delete-orphan")
 
     def is_expired(self) -> bool:
         from datetime import timezone
