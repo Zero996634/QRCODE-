@@ -1,0 +1,314 @@
+{% extends "base.html" %}
+{% block title %}Teacher Dashboard{% endblock %}
+{% block page_title %}Teacher Dashboard{% endblock %}
+
+{% block head %}
+<script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+{% endblock %}
+
+{% block content %}
+<div class="grid-2" style="align-items:start">
+
+  <!-- LEFT COL: Location + Session Start -->
+  <div style="display:flex;flex-direction:column;gap:20px">
+
+    <!-- Step 1: Capture Location -->
+    <div class="card">
+      <div class="card-title">📍 Step 1 — Capture Classroom Location</div>
+      <div class="form-group">
+        <label>Select Your Class</label>
+        <select class="form-control" id="classSelect">
+          <option value="">— Select class —</option>
+          {% for c in classes %}
+          <option value="{{ c.id }}" data-lat="{{ c.latitude or '' }}" data-lon="{{ c.longitude or '' }}">
+            {{ c.class_name }} — {{ c.subject }} ({{ c.section }})
+          </option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <div id="locStatus" style="display:none;margin-bottom:12px"></div>
+
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px">
+        <div class="form-group" style="margin-bottom:0">
+          <label>Latitude</label>
+          <input class="form-control" id="latInput" placeholder="—" readonly/>
+        </div>
+        <div class="form-group" style="margin-bottom:0">
+          <label>Longitude</label>
+          <input class="form-control" id="lonInput" placeholder="—" readonly/>
+        </div>
+      </div>
+
+      <div style="display:flex;gap:10px">
+        <button class="btn btn-info" onclick="captureLocation()">📡 Capture My Location</button>
+        <button class="btn btn-success" id="saveLocBtn" onclick="saveLocation()" disabled>💾 Save to Class</button>
+      </div>
+    </div>
+
+    <!-- Step 2: Start Session -->
+    <div class="card">
+      <div class="card-title">🚀 Step 2 — Start Attendance Session</div>
+      <div class="form-group">
+        <label>Attendance Window (seconds) <span style="color:var(--muted);font-weight:400">— e.g. 300 = 5 min, 600 = 10 min</span></label>
+        <input class="form-control" type="number" id="durationInput" value="300" min="30" max="1800"/>
+      </div>
+      <button class="btn btn-primary btn-block" id="startSessionBtn" onclick="startSession()">
+        ▶ Generate Session QR &amp; Start Timer
+      </button>
+    </div>
+
+    <!-- Session QR -->
+    <div class="card" id="sessionQrCard" style="display:none">
+      <div class="card-title">🔑 Session QR Code</div>
+      <div class="qr-box">
+        <img id="sessionQrImg" src="" alt="Session QR"/>
+        <div class="qr-label">Show this on screen — students scan to get their session ID</div>
+      </div>
+    </div>
+
+    <!-- Past Sessions -->
+    <div class="card">
+      <div class="card-title">🕰 Past Sessions</div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Date</th><th>Class</th><th>Duration</th><th>Action</th></tr></thead>
+          <tbody>
+          {% for s in past_sessions %}
+          <tr>
+            <td>{{ s.start_time.strftime('%d %b, %H:%M') }}</td>
+            <td><strong>{{ s.cls.class_name }}</strong><br><small style="color:var(--muted)">{{ s.cls.subject }}</small></td>
+            <td>{{ s.duration_seconds // 60 }} min</td>
+            <td>
+              <a href="{{ url_for('teacher_session_report', session_id=s.id) }}" class="btn btn-sm btn-info">Report</a>
+            </td>
+          </tr>
+          {% else %}
+          <tr><td colspan="4" style="text-align:center;color:var(--muted);padding:15px">No past sessions yet.</td></tr>
+          {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- RIGHT COL: Timer + Scanner -->
+  <div style="display:flex;flex-direction:column;gap:20px">
+
+    <!-- Timer -->
+    <div class="card" id="timerCard" style="display:none">
+      <div class="card-title">⏱ Step 3 — Attendance Timer</div>
+      <div style="text-align:center;margin-bottom:16px">
+        <div class="timer-ring" id="timerRing">
+          <svg width="110" height="110">
+            <circle class="bg-ring" cx="55" cy="55" r="46"/>
+            <circle class="progress-ring" id="progressRing" cx="55" cy="55" r="46"
+                    stroke-dasharray="289" stroke-dashoffset="0"/>
+          </svg>
+          <div class="timer-text">
+            <span id="timerText">30s</span>
+            <small>remaining</small>
+          </div>
+        </div>
+      </div>
+      <button class="btn btn-danger btn-block" onclick="endSession()">⏹ End Session Early</button>
+    </div>
+
+    <!-- Step 4: QR Scanner -->
+    <div class="card" id="scannerCard" style="display:none">
+      <div class="card-title">📷 Step 4 — Scan Student QR</div>
+      <div id="reader"></div>
+      <div id="scanResult"></div>
+    </div>
+
+    <!-- Scan Log -->
+    <div class="card" id="scanLogCard" style="display:none">
+      <div class="card-title">📋 Scan Log</div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Student</th><th>Roll No</th><th>Status</th><th>Distance</th></tr></thead>
+          <tbody id="scanLogBody"></tbody>
+        </table>
+      </div>
+    </div>
+
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/location.js') }}"></script>
+<script src="{{ url_for('static', filename='js/timer.js') }}"></script>
+<script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+<script>
+let currentSessionId = null;
+let html5QrScanner = null;
+let scanning = false;
+let sessionDuration = 30;
+
+// ── Location ─────────────────────────────────────────────────────────────
+function captureLocation() {
+  const statusEl = document.getElementById('locStatus');
+  statusEl.style.display = 'block';
+  statusEl.innerHTML = '<div class="loc-indicator pulse">📡 Getting your location...</div>';
+
+  LocationHelper.get(coords => {
+    document.getElementById('latInput').value = coords.lat.toFixed(7);
+    document.getElementById('lonInput').value = coords.lon.toFixed(7);
+    document.getElementById('saveLocBtn').disabled = false;
+    statusEl.innerHTML = `<div class="loc-indicator">✅ Location captured — Accuracy: ±${Math.round(coords.acc)}m</div>`;
+  }, err => {
+    statusEl.innerHTML = `<div class="loc-indicator error">❌ ${err}</div>`;
+  });
+}
+
+function saveLocation() {
+  const classId = document.getElementById('classSelect').value;
+  if (!classId) { alert('Please select a class first.'); return; }
+  const lat = parseFloat(document.getElementById('latInput').value);
+  const lon = parseFloat(document.getElementById('lonInput').value);
+  if (!lat || !lon) { alert('Capture location first.'); return; }
+
+  fetch(`/teacher/update-location/${classId}`, {
+    method: 'POST', headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({ lat, lon })
+  })
+  .then(r => r.json())
+  .then(d => {
+    if (d.success) {
+      document.getElementById('locStatus').innerHTML =
+        `<div class="loc-indicator">💾 Saved — ${d.lat.toFixed(5)}, ${d.lon.toFixed(5)}</div>`;
+    }
+  });
+}
+
+// ── Session ───────────────────────────────────────────────────────────────
+function startSession() {
+  const classId = document.getElementById('classSelect').value;
+  if (!classId) { alert('Please select a class first.'); return; }
+  sessionDuration = parseInt(document.getElementById('durationInput').value) || 30;
+
+  fetch('/teacher/start-session', {
+    method: 'POST', headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({ class_id: parseInt(classId), duration: sessionDuration })
+  })
+  .then(r => r.json())
+  .then(d => {
+    if (d.error) { alert(d.error); return; }
+    currentSessionId = d.session_id;
+
+    // Show QR
+    document.getElementById('sessionQrImg').src = 'data:image/png;base64,' + d.qr_b64;
+    document.getElementById('sessionQrCard').style.display = 'block';
+
+    // Show timer
+    document.getElementById('timerCard').style.display = 'block';
+    const ring = document.getElementById('progressRing');
+    const text = document.getElementById('timerText');
+    CountdownTimer.start(d.duration, (remaining, total) => {
+      CountdownTimer.render(remaining, total, ring, text);
+    }, () => {
+      text.textContent = 'Done!';
+      ring.style.stroke = 'var(--danger)';
+      stopScanner();
+      alert('⏰ Attendance window has closed!');
+    });
+
+    // Show scanner
+    document.getElementById('scannerCard').style.display = 'block';
+    document.getElementById('scanLogCard').style.display = 'block';
+    startScanner();
+  });
+}
+
+function endSession() {
+  if (!currentSessionId) return;
+  fetch(`/teacher/end-session/${currentSessionId}`, { method: 'POST' })
+    .then(() => {
+      CountdownTimer.stop();
+      stopScanner();
+      document.getElementById('timerCard').style.display = 'none';
+      document.getElementById('scannerCard').style.display = 'none';
+    });
+}
+
+// ── Scanner ────────────────────────────────────────────────────────────────
+function startScanner() {
+  if (scanning) return;
+  html5QrScanner = new Html5Qrcode('reader');
+  html5QrScanner.start(
+    { facingMode: 'environment' },
+    { fps: 10, qrbox: { width: 250, height: 250 } },
+    onScanSuccess,
+    () => {}
+  ).then(() => scanning = true)
+   .catch(err => {
+     document.getElementById('scanResult').innerHTML =
+       `<div class="scan-result" style="border-color:var(--danger);color:var(--danger)">❌ Camera error: ${err}</div>`;
+   });
+}
+
+function stopScanner() {
+  if (html5QrScanner && scanning) {
+    html5QrScanner.stop().then(() => { scanning = false; });
+  }
+}
+
+let lastScanned = '';
+let lastScannedAt = 0;
+function onScanSuccess(decoded) {
+  const now = Date.now();
+  if (decoded === lastScanned && now - lastScannedAt < 3000) return; // debounce
+  lastScanned = decoded;
+  lastScannedAt = now;
+
+  let payload;
+  try { payload = JSON.parse(decoded); }
+  catch { showScanResult('❌ Invalid QR — not a SmartAttend code.', 'danger'); return; }
+
+  fetch('/api/mark-attendance', {
+    method: 'POST', headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify(payload)
+  })
+  .then(r => r.json())
+  .then(d => {
+    if (d.error) { showScanResult('⚠️ ' + d.error, 'warning'); return; }
+    const icon = d.status === 'Present' ? '✅' : '❌';
+    showScanResult(`${icon} ${d.student_name} (${d.roll_number}) — ${d.status} — ${d.distance_m}m`, d.status === 'Present' ? 'success' : 'danger');
+    addToLog(d.student_name, d.roll_number, d.status, d.distance_m);
+  })
+  .catch(() => showScanResult('❌ Server error.', 'danger'));
+}
+
+function showScanResult(msg, type) {
+  const el = document.getElementById('scanResult');
+  el.innerHTML = `<div class="scan-result" style="border-color:var(--${type});color:var(--${type})">${msg}</div>`;
+}
+
+function addToLog(name, roll, status, dist) {
+  const tbody = document.getElementById('scanLogBody');
+  const row = document.createElement('tr');
+  row.innerHTML = `
+    <td>${name}</td>
+    <td><code style="color:var(--accent)">${roll}</code></td>
+    <td><span class="badge ${status==='Present'?'badge-success':'badge-danger'}">${status}</span></td>
+    <td style="color:var(--muted)">${dist}m</td>`;
+  tbody.prepend(row);
+}
+
+// Pre-fill saved location on class select
+document.getElementById('classSelect').addEventListener('change', function() {
+  const opt = this.options[this.selectedIndex];
+  const lat = opt.dataset.lat, lon = opt.dataset.lon;
+  if (lat && lon) {
+    document.getElementById('latInput').value = lat;
+    document.getElementById('lonInput').value = lon;
+    document.getElementById('saveLocBtn').disabled = false;
+    document.getElementById('locStatus').style.display = 'block';
+    document.getElementById('locStatus').innerHTML =
+      `<div class="loc-indicator">📂 Loaded saved location for this class</div>`;
+  }
+});
+</script>
+{% endblock %}

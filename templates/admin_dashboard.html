@@ -1,0 +1,248 @@
+{% extends "base.html" %}
+{% block title %}Admin Dashboard{% endblock %}
+{% block page_title %}Admin Dashboard{% endblock %}
+
+{% block content %}
+<!-- Stats -->
+<div class="stat-grid">
+  <div class="stat-card">
+    <div class="stat-icon">👨‍🏫</div>
+    <div class="stat-value">{{ teachers|length }}</div>
+    <div class="stat-label">Total Teachers</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-icon">🎓</div>
+    <div class="stat-value">{{ students|length }}</div>
+    <div class="stat-label">Total Students</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-icon">📚</div>
+    <div class="stat-value">{{ classes|length }}</div>
+    <div class="stat-label">Total Classes</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-icon">✅</div>
+    <div class="stat-value">{{ attendance_records|selectattr('status','eq','Present')|list|length }}</div>
+    <div class="stat-label">Present Today</div>
+  </div>
+</div>
+
+<!-- Tabs -->
+<div class="tabs">
+  <button class="tab-btn active" onclick="switchTab('teachers',this)">👨‍🏫 Teachers</button>
+  <button class="tab-btn" onclick="switchTab('students',this)">🎓 Students</button>
+  <button class="tab-btn" onclick="switchTab('classes',this)">📚 Classes</button>
+  <button class="tab-btn" onclick="switchTab('attendance',this)">📊 Attendance</button>
+</div>
+
+<!-- ─── Teachers Tab ─── -->
+<div class="tab-pane active" id="tab-teachers">
+  <div class="grid-2">
+    <!-- Add Teacher Form -->
+    <div class="card">
+      <div class="card-title">➕ Add Teacher</div>
+      <form method="POST" action="{{ url_for('add_teacher') }}">
+        <div class="form-group">
+          <label>Full Name</label>
+          <input class="form-control" name="name" placeholder="Dr. Ramesh Kumar" required/>
+        </div>
+        <div class="form-group">
+          <label>Email</label>
+          <input class="form-control" type="email" name="email" placeholder="teacher@school.edu" required/>
+        </div>
+        <div class="form-group">
+          <label>Password</label>
+          <input class="form-control" type="password" name="password" placeholder="••••••••" required/>
+        </div>
+        <button class="btn btn-primary btn-block">Add Teacher</button>
+      </form>
+    </div>
+
+    <!-- Teachers List -->
+    <div class="card">
+      <div class="card-title">👨‍🏫 Teacher List</div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>#</th><th>Name</th><th>Email</th><th>Classes</th><th>Action</th></tr></thead>
+          <tbody>
+          {% for t in teachers %}
+          <tr>
+            <td>{{ loop.index }}</td>
+            <td>{{ t.name }}</td>
+            <td style="color:var(--muted)">{{ t.email }}</td>
+            <td><span class="badge badge-info">{{ t.classes|length }}</span></td>
+            <td>
+              <form method="POST" action="{{ url_for('delete_teacher', tid=t.id) }}" onsubmit="return confirm('Delete teacher?')">
+                <button class="btn btn-danger btn-sm">🗑</button>
+              </form>
+            </td>
+          </tr>
+          {% else %}
+          <tr><td colspan="5" style="text-align:center;color:var(--muted);padding:24px">No teachers yet. Add one!</td></tr>
+          {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ─── Students Tab ─── -->
+<div class="tab-pane" id="tab-students">
+  <div class="grid-2">
+    <div class="card">
+      <div class="card-title">➕ Add Student</div>
+      <form method="POST" action="{{ url_for('add_student') }}">
+        <div class="form-group">
+          <label>Full Name</label>
+          <input class="form-control" name="name" placeholder="Dinesh Kumar" required/>
+        </div>
+        <div class="form-group">
+          <label>Roll Number</label>
+          <input class="form-control" name="roll_number" placeholder="2025CS001" required/>
+        </div>
+        <div class="form-group">
+          <label>Email</label>
+          <input class="form-control" type="email" name="email" placeholder="student@school.edu" required/>
+        </div>
+        <div class="form-group">
+          <label>Password</label>
+          <input class="form-control" type="password" name="password" placeholder="••••••••" required/>
+        </div>
+        <button class="btn btn-primary btn-block">Add Student</button>
+      </form>
+    </div>
+
+    <div class="card">
+      <div class="card-title">🎓 Student List</div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>#</th><th>Name</th><th>Roll No</th><th>Email</th><th>Action</th></tr></thead>
+          <tbody>
+          {% for s in students %}
+          <tr>
+            <td>{{ loop.index }}</td>
+            <td>{{ s.name }}</td>
+            <td><code style="color:var(--accent)">{{ s.roll_number }}</code></td>
+            <td style="color:var(--muted)">{{ s.email }}</td>
+            <td>
+              <form method="POST" action="{{ url_for('delete_student', sid=s.id) }}" onsubmit="return confirm('Delete student?')">
+                <button class="btn btn-danger btn-sm">🗑</button>
+              </form>
+            </td>
+          </tr>
+          {% else %}
+          <tr><td colspan="5" style="text-align:center;color:var(--muted);padding:24px">No students yet.</td></tr>
+          {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ─── Classes Tab ─── -->
+<div class="tab-pane" id="tab-classes">
+  <div class="grid-2">
+    <div class="card">
+      <div class="card-title">➕ Create Class</div>
+      <form method="POST" action="{{ url_for('add_class') }}">
+        <div class="form-group">
+          <label>Class Name</label>
+          <input class="form-control" name="class_name" placeholder="CS301" required/>
+        </div>
+        <div class="form-group">
+          <label>Subject</label>
+          <input class="form-control" name="subject" placeholder="Artificial Intelligence" required/>
+        </div>
+        <div class="form-group">
+          <label>Section</label>
+          <input class="form-control" name="section" placeholder="A" required/>
+        </div>
+        <div class="form-group">
+          <label>Assign Teacher</label>
+          <select class="form-control" name="teacher_id" required>
+            <option value="">— Select Teacher —</option>
+            {% for t in teachers %}
+            <option value="{{ t.id }}">{{ t.name }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <button class="btn btn-primary btn-block">Create Class</button>
+      </form>
+    </div>
+
+    <div class="card">
+      <div class="card-title">📚 Class List</div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>#</th><th>Class</th><th>Subject</th><th>Sec</th><th>Teacher</th><th>Action</th></tr></thead>
+          <tbody>
+          {% for c in classes %}
+          <tr>
+            <td>{{ loop.index }}</td>
+            <td><strong>{{ c.class_name }}</strong></td>
+            <td>{{ c.subject }}</td>
+            <td>{{ c.section }}</td>
+            <td>{{ c.teacher.name }}</td>
+            <td>
+              <form method="POST" action="{{ url_for('delete_class', cid=c.id) }}" onsubmit="return confirm('Delete class?')">
+                <button class="btn btn-danger btn-sm">🗑</button>
+              </form>
+            </td>
+          </tr>
+          {% else %}
+          <tr><td colspan="6" style="text-align:center;color:var(--muted);padding:24px">No classes yet.</td></tr>
+          {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ─── Attendance Tab ─── -->
+<div class="tab-pane" id="tab-attendance">
+  <div class="card">
+    <div class="card-title" style="justify-content:space-between">
+      📊 Recent Attendance
+      <a href="{{ url_for('attendance_report') }}" class="btn btn-ghost btn-sm">Full Report →</a>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>#</th><th>Student</th><th>Roll No</th><th>Class</th><th>Status</th><th>Distance</th><th>Time</th></tr></thead>
+        <tbody>
+        {% for r in attendance_records %}
+        <tr>
+          <td>{{ loop.index }}</td>
+          <td>{{ r.student.name }}</td>
+          <td><code style="color:var(--accent)">{{ r.student.roll_number }}</code></td>
+          <td>{{ r.cls.class_name }}</td>
+          <td>
+            <span class="badge {% if r.status=='Present' %}badge-success{% else %}badge-danger{% endif %}">
+              {{ r.status }}
+            </span>
+          </td>
+          <td style="color:var(--muted)">{{ r.distance_m }}m</td>
+          <td style="color:var(--muted)">{{ r.timestamp.strftime('%d %b %H:%M') }}</td>
+        </tr>
+        {% else %}
+        <tr><td colspan="7" style="text-align:center;color:var(--muted);padding:24px">No attendance records yet.</td></tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function switchTab(id, btn) {
+  document.querySelectorAll('.tab-pane').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('tab-' + id).classList.add('active');
+  btn.classList.add('active');
+}
+</script>
+{% endblock %}

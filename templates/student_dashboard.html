@@ -1,0 +1,180 @@
+{% extends "base.html" %}
+{% block title %}Student Dashboard{% endblock %}
+{% block page_title %}Student Dashboard{% endblock %}
+
+{% block content %}
+<div class="grid-2" style="align-items:start">
+
+  <!-- LEFT: Active Sessions -->
+  <div class="card">
+    <div class="card-title">📚 Active Attendance Sessions</div>
+
+    {% if active_sessions %}
+      <div style="display:flex;flex-direction:column;gap:12px">
+      {% for sess in active_sessions %}
+        <div class="card-glass" id="session-{{ sess.id }}">
+          <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px">
+            <div>
+              <div style="font-weight:700;font-size:.95rem">{{ sess.cls.class_name }} — {{ sess.cls.subject }}</div>
+              <div style="color:var(--muted);font-size:.8rem;margin-top:3px">
+                Section {{ sess.cls.section }} &nbsp;·&nbsp; Teacher: {{ sess.cls.teacher.name }}
+              </div>
+            </div>
+            <span class="badge badge-success pulse">🟢 Active</span>
+          </div>
+
+          <div id="loc-{{ sess.id }}" style="margin-bottom:10px"></div>
+
+          <div style="display:flex;gap:8px;flex-wrap:wrap">
+            <button class="btn btn-info btn-sm" onclick="captureAndGenerate({{ sess.id }}, {{ sess.class_id }})">
+              📍 Get Location &amp; Generate QR
+            </button>
+          </div>
+
+          <div id="qr-{{ sess.id }}" style="display:none;margin-top:14px">
+            <div class="qr-box">
+              <img id="qrimg-{{ sess.id }}" src="" alt="Student QR" style="width:180px;height:180px"/>
+              <div class="qr-label">🎯 Show this QR to your teacher's scanner</div>
+              <div style="font-size:.75rem;color:var(--warning);margin-top:4px">⚠️ QR is valid only for this session</div>
+            </div>
+          </div>
+
+          <div id="msg-{{ sess.id }}" style="margin-top:10px"></div>
+        </div>
+      {% endfor %}
+      </div>
+    {% else %}
+      <div style="text-align:center;padding:40px 20px;color:var(--muted)">
+        <div style="font-size:3rem;margin-bottom:12px">⏳</div>
+        <div style="font-weight:600;margin-bottom:6px">No Active Sessions</div>
+        <div style="font-size:.82rem">Wait for your teacher to start an attendance session.</div>
+      </div>
+    {% endif %}
+  </div>
+
+  <!-- RIGHT: Info + How it works -->
+  <div style="display:flex;flex-direction:column;gap:20px">
+    <div class="card">
+      <div class="card-title">ℹ️ How It Works</div>
+      <div class="step-list">
+        <div class="step-item">
+          <div class="step-num">1</div>
+          <div class="step-body">
+            <h4>Wait for a Session</h4>
+            <p>Your teacher starts an attendance session for your class. It will appear on the left.</p>
+          </div>
+        </div>
+        <div class="step-item">
+          <div class="step-num">2</div>
+          <div class="step-body">
+            <h4>Allow Location Access</h4>
+            <p>Click "Get Location & Generate QR". Your browser will ask for GPS permission — allow it.</p>
+          </div>
+        </div>
+        <div class="step-item">
+          <div class="step-num">3</div>
+          <div class="step-body">
+            <h4>Show QR to Teacher</h4>
+            <p>Hold your screen towards the teacher's scanner. Attendance is marked automatically.</p>
+          </div>
+        </div>
+        <div class="step-item">
+          <div class="step-num">4</div>
+          <div class="step-body">
+            <h4>Verification</h4>
+            <p>System checks your GPS matches the classroom (within 30 m) and session is still active.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card" style="background:rgba(99,102,241,.06);border-color:rgba(99,102,241,.2)">
+      <div class="card-title" style="color:var(--accent)">🔒 Security Notice</div>
+      <p style="font-size:.83rem;color:var(--muted);line-height:1.7">
+        Your QR is unique to this session and expires when the session ends. 
+        Location data is embedded and verified server-side. 
+        Proxy attendance is <strong style="color:var(--danger)">not possible</strong> — 
+        you must be physically present in the classroom.
+      </p>
+    </div>
+
+    <!-- My Attendance History -->
+    <div class="card">
+      <div class="card-title">🕰 My Attendance History</div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Date</th><th>Class</th><th>Subject</th><th>Status</th></tr></thead>
+          <tbody>
+          {% for r in past_records %}
+          <tr>
+            <td>{{ r.timestamp.strftime('%d %b, %H:%M') }}</td>
+            <td><strong>{{ r.cls.class_name }}</strong></td>
+            <td>{{ r.cls.subject }}</td>
+            <td>
+              <span class="badge {% if r.status=='Present' %}badge-success{% else %}badge-danger{% endif %}">
+                {{ r.status }}
+              </span>
+            </td>
+          </tr>
+          {% else %}
+          <tr><td colspan="4" style="text-align:center;color:var(--muted);padding:15px">No past attendance records.</td></tr>
+          {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/location.js') }}"></script>
+<script>
+function captureAndGenerate(sessionId, classId) {
+  const locEl = document.getElementById('loc-' + sessionId);
+  const msgEl = document.getElementById('msg-' + sessionId);
+  const qrEl  = document.getElementById('qr-' + sessionId);
+
+  locEl.innerHTML = '<div class="loc-indicator pulse">📡 Getting your location...</div>';
+  qrEl.style.display = 'none';
+  msgEl.innerHTML = '';
+
+  LocationHelper.get(coords => {
+    locEl.innerHTML = `<div class="loc-indicator">✅ Location: ${coords.lat.toFixed(5)}, ${coords.lon.toFixed(5)} (±${Math.round(coords.acc)}m)</div>`;
+
+    fetch('/student/generate-qr', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({ session_id: sessionId, class_id: classId, lat: coords.lat, lon: coords.lon })
+    })
+    .then(r => r.json())
+    .then(d => {
+      if (d.error) {
+        msgEl.innerHTML = `<div class="alert alert-danger">❌ ${d.error}</div>`;
+        return;
+      }
+      document.getElementById('qrimg-' + sessionId).src = 'data:image/png;base64,' + d.qr_b64;
+      qrEl.style.display = 'block';
+
+      // Poll to remove QR when session ends
+      const poll = setInterval(() => {
+        fetch('/api/session-status/' + sessionId)
+          .then(r => r.json())
+          .then(s => {
+            if (!s.active) {
+              clearInterval(poll);
+              qrEl.style.display = 'none';
+              msgEl.innerHTML = '<div class="alert alert-warning">⏰ Session has ended. QR is no longer valid.</div>';
+            }
+          });
+      }, 5000);
+    })
+    .catch(() => {
+      msgEl.innerHTML = '<div class="alert alert-danger">❌ Server error. Please try again.</div>';
+    });
+  }, err => {
+    locEl.innerHTML = `<div class="loc-indicator error">❌ ${err}</div>`;
+  });
+}
+</script>
+{% endblock %}

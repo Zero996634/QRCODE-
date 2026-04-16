@@ -1,0 +1,119 @@
+{% extends "base.html" %}
+{% block title %}Attendance Report{% endblock %}
+{% block page_title %}Attendance Report{% endblock %}
+
+{% block content %}
+<div class="card">
+  <div class="card-title" style="justify-content:space-between;flex-wrap:wrap;gap:12px">
+    <span>
+      📊 {% if cls is defined %}{{ cls.class_name }} — {{ cls.subject }}{% else %}All Classes{% endif %}
+      {% if sess is defined %} (Session: {{ sess.start_time.strftime('%d %b %Y, %H:%M') }}){% endif %}
+    </span>
+    <div style="display:flex;gap:8px;flex-wrap:wrap">
+      <input class="form-control" id="searchInput" placeholder="🔍 Search student..."
+             oninput="filterTable()" style="width:200px"/>
+      <button class="btn btn-ghost btn-sm" onclick="exportCSV()">⬇ Export CSV</button>
+      {% if is_admin %}
+      <a href="{{ url_for('admin_dashboard') }}" class="btn btn-ghost btn-sm">← Back</a>
+      {% else %}
+      <a href="{{ url_for('teacher_dashboard') }}" class="btn btn-ghost btn-sm">← Back</a>
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- Summary Stats -->
+  <div class="stat-grid" style="margin-bottom:20px">
+    <div class="stat-card">
+      <div class="stat-icon">📋</div>
+      <div class="stat-value">{{ records|length }}</div>
+      <div class="stat-label">Total Records</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-icon">✅</div>
+      <div class="stat-value">{{ records|selectattr('status','eq','Present')|list|length }}</div>
+      <div class="stat-label">Present</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-icon">❌</div>
+      <div class="stat-value">{{ records|selectattr('status','eq','Rejected')|list|length }}</div>
+      <div class="stat-label">Rejected</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-icon">📈</div>
+      <div class="stat-value">
+        {% if records|length > 0 %}
+          {{ ((records|selectattr('status','eq','Present')|list|length) / records|length * 100)|round(1) }}%
+        {% else %}—{% endif %}
+      </div>
+      <div class="stat-label">Attendance Rate</div>
+    </div>
+  </div>
+
+  <div class="table-wrap">
+    <table id="reportTable">
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>Student Name</th>
+          <th>Roll No</th>
+          <th>Class</th>
+          <th>Subject</th>
+          <th>Status</th>
+          <th>Distance</th>
+          <th>Date &amp; Time</th>
+        </tr>
+      </thead>
+      <tbody>
+      {% for r in records %}
+      <tr>
+        <td>{{ loop.index }}</td>
+        <td><strong>{{ r.student.name }}</strong></td>
+        <td><code style="color:var(--accent)">{{ r.student.roll_number }}</code></td>
+        <td>{{ r.cls.class_name }}</td>
+        <td>{{ r.cls.subject }}</td>
+        <td>
+          <span class="badge {% if r.status=='Present' %}badge-success{% else %}badge-danger{% endif %}">
+            {% if r.status=='Present' %}✅{% else %}❌{% endif %} {{ r.status }}
+          </span>
+        </td>
+        <td style="color:var(--muted)">{{ r.distance_m }}m</td>
+        <td style="color:var(--muted)">{{ r.timestamp.strftime('%d %b %Y, %H:%M:%S') }}</td>
+      </tr>
+      {% else %}
+      <tr>
+        <td colspan="8" style="text-align:center;color:var(--muted);padding:40px">
+          <div style="font-size:2.5rem;margin-bottom:10px">📭</div>
+          No attendance records found.
+        </td>
+      </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function filterTable() {
+  const q = document.getElementById('searchInput').value.toLowerCase();
+  const rows = document.querySelectorAll('#reportTable tbody tr');
+  rows.forEach(row => {
+    row.style.display = row.textContent.toLowerCase().includes(q) ? '' : 'none';
+  });
+}
+
+function exportCSV() {
+  const rows = document.querySelectorAll('#reportTable tr');
+  const csv = Array.from(rows).map(row =>
+    Array.from(row.querySelectorAll('th,td'))
+      .map(cell => `"${cell.textContent.trim().replace(/"/g,'""')}"`)
+      .join(',')
+  ).join('\n');
+  const a = document.createElement('a');
+  a.href = 'data:text/csv;charset=utf-8,' + encodeURIComponent(csv);
+  a.download = 'attendance_report.csv';
+  a.click();
+}
+</script>
+{% endblock %}

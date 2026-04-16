@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>Login — SmartAttend</title>
+<meta name="description" content="Smart Location-Based QR Attendance System Login"/>
+<link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}"/>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📋</text></svg>"/>
+</head>
+<body>
+<div class="login-page">
+  <div class="login-card">
+    <div class="login-logo">
+      <div class="logo-icon">📋</div>
+      <h1>SmartAttend</h1>
+      <p>Smart QR + Location Attendance System</p>
+    </div>
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% for cat, msg in messages %}
+        <div class="alert alert-{{ cat }}">
+          {% if cat=='success' %}✅{% elif cat=='danger' %}❌{% elif cat=='warning' %}⚠️{% else %}ℹ️{% endif %}
+          {{ msg }}
+        </div>
+      {% endfor %}
+    {% endwith %}
+
+    <form method="POST" action="{{ url_for('login') }}" id="loginForm">
+      <!-- Role Selector -->
+      <div class="form-group">
+        <label>Select Role</label>
+        <div class="role-select">
+          <button type="button" class="role-btn active" data-role="admin" onclick="setRole('admin',this)">🛡 Admin</button>
+          <button type="button" class="role-btn" data-role="teacher" onclick="setRole('teacher',this)">👨‍🏫 Teacher</button>
+          <button type="button" class="role-btn" data-role="student" onclick="setRole('student',this)">🎓 Student</button>
+        </div>
+        <input type="hidden" name="role" id="roleInput" value="admin"/>
+      </div>
+
+      <div class="form-group">
+        <label for="email">Email Address</label>
+        <input class="form-control" type="email" id="email" name="email"
+               placeholder="you@example.com" required/>
+      </div>
+
+      <div class="form-group">
+        <label for="password">Password</label>
+        <input class="form-control" type="password" id="password" name="password"
+               placeholder="••••••••" required/>
+      </div>
+
+      <button type="submit" class="btn btn-primary btn-block" style="margin-top:8px">
+        🔐 Sign In
+      </button>
+    </form>
+
+    <div style="margin-top:20px;padding:14px;background:rgba(99,102,241,.07);border:1px solid rgba(99,102,241,.2);border-radius:9px;font-size:.78rem;color:var(--muted)">
+      <strong style="color:var(--accent)">Default Admin</strong><br/>
+      Email: <code style="color:var(--text)">admin@attend.com</code> &nbsp;|&nbsp; Password: <code style="color:var(--text)">admin123</code>
+    </div>
+  </div>
+</div>
+
+<script>
+function setRole(role, btn) {
+  document.getElementById('roleInput').value = role;
+  document.querySelectorAll('.role-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+}
+</script>
+</body>
+</html>

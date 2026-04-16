@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>{% block title %}SmartAttend{% endblock %} — Smart Attendance</title>
+<meta name="description" content="Smart Location-Based QR Attendance System"/>
+<link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}"/>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📋</text></svg>"/>
+{% block head %}{% endblock %}
+</head>
+<body>
+<div class="wrapper">
+  <!-- Sidebar -->
+  <nav class="sidebar" id="sidebar">
+    <div class="sidebar-brand">
+      <h1>📋 SmartAttend</h1>
+      <small>QR + Location System</small>
+    </div>
+    <div class="sidebar-nav">
+      {% if session.get('role') == 'admin' %}
+        <a href="{{ url_for('admin_dashboard') }}" class="{% if request.endpoint=='admin_dashboard' %}active{% endif %}">
+          <span class="icon">🏠</span> Dashboard
+        </a>
+        <a href="{{ url_for('attendance_report') }}" class="{% if request.endpoint=='attendance_report' %}active{% endif %}">
+          <span class="icon">📊</span> Attendance Report
+        </a>
+      {% elif session.get('role') == 'teacher' %}
+        <a href="{{ url_for('teacher_dashboard') }}" class="{% if request.endpoint=='teacher_dashboard' %}active{% endif %}">
+          <span class="icon">🏠</span> Dashboard
+        </a>
+      {% elif session.get('role') == 'student' %}
+        <a href="{{ url_for('student_dashboard') }}" class="{% if request.endpoint=='student_dashboard' %}active{% endif %}">
+          <span class="icon">🏠</span> Dashboard
+        </a>
+      {% endif %}
+    </div>
+    <div class="sidebar-footer">
+      <a href="{{ url_for('logout') }}">
+        <span>🚪</span> Logout ({{ session.get('name','') }})
+      </a>
+    </div>
+  </nav>
+
+  <!-- Main -->
+  <div class="main">
+    <div class="topbar">
+      <h2>{% block page_title %}{% endblock %}</h2>
+      <div class="user-badge">
+        <span>{{ session.get('name','User') }}</span>
+        &nbsp;·&nbsp; {{ session.get('role','') | capitalize }}
+      </div>
+    </div>
+
+    <div class="content">
+      <!-- Flash Messages -->
+      {% with messages = get_flashed_messages(with_categories=true) %}
+        {% for cat, msg in messages %}
+          <div class="alert alert-{{ cat }}">
+            {% if cat=='success' %}✅{% elif cat=='danger' %}❌{% elif cat=='warning' %}⚠️{% else %}ℹ️{% endif %}
+            {{ msg }}
+          </div>
+        {% endfor %}
+      {% endwith %}
+
+      {% block content %}{% endblock %}
+    </div>
+  </div>
+</div>
+
+{% block scripts %}{% endblock %}
+</body>
+</html>
