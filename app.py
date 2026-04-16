@@ -318,8 +318,6 @@ def student_dashboard():
     # Find past attendance history for this student
     past_records = (Attendance.query
                     .filter_by(student_id=session["user_id"])
-                    .join(AttendanceSession, Attendance.session_id == AttendanceSession.id)
-                    .filter(AttendanceSession.active == False)
                     .order_by(Attendance.timestamp.desc())
                     .limit(20).all())
 
