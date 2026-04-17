@@ -42,13 +42,26 @@
     </div>
   </nav>
 
+  <!-- Sidebar overlay for mobile -->
+  <div class="sidebar-overlay" id="sidebarOverlay" onclick="toggleSidebar()"></div>
+
   <!-- Main -->
   <div class="main">
     <div class="topbar">
-      <h2>{% block page_title %}{% endblock %}</h2>
-      <div class="user-badge">
-        <span>{{ session.get('name','User') }}</span>
-        &nbsp;·&nbsp; {{ session.get('role','') | capitalize }}
+      <div class="topbar-left">
+        <button class="hamburger" id="hamburgerBtn" onclick="toggleSidebar()" aria-label="Toggle menu">
+          <span></span><span></span><span></span>
+        </button>
+        <h2>{% block page_title %}{% endblock %}</h2>
+      </div>
+      <div class="topbar-right">
+        <div class="user-badge">
+          <span>{{ session.get('name','User') }}</span>
+          &nbsp;·&nbsp; {{ session.get('role','') | capitalize }}
+        </div>
+        {% if session.get('role') %}
+        <a href="{{ url_for('logout') }}" class="btn-logout-mobile" title="Logout">🚪</a>
+        {% endif %}
       </div>
     </div>
 
@@ -68,6 +81,12 @@
   </div>
 </div>
 
+<script>
+function toggleSidebar(){
+  document.getElementById('sidebar').classList.toggle('open');
+  document.getElementById('sidebarOverlay').classList.toggle('active');
+}
+</script>
 {% block scripts %}{% endblock %}
 </body>
 </html>
