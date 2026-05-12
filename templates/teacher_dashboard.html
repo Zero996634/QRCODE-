@@ -180,7 +180,7 @@ function saveLocation() {
   .then(d => {
     if (d.success) {
       document.getElementById('locStatus').innerHTML =
-        `<div class="loc-indicator">💾 Saved — ${d.lat.toFixed(5)}, ${d.lon.toFixed(5)}</div>`;
+        `<div class="loc-indicator">💾 Saved — ${d.lat.toFixed(1)}, ${d.lon.toFixed(1)} (used for checking)</div>`;
     }
   });
 }

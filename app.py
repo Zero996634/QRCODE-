@@ -231,8 +231,8 @@ def teacher_dashboard():
 @login_required("teacher")
 def update_class_location(class_id):
     data = request.get_json()
-    lat = data.get("lat")
-    lon = data.get("lon")
+    lat = float(data.get("lat"))
+    lon = float(data.get("lon"))
     cls = Class.query.get_or_404(class_id)
     if cls.teacher_id != session["user_id"]:
         return jsonify({"error": "Unauthorized"}), 403
@@ -334,8 +334,8 @@ def student_dashboard():
 @login_required("student")
 def generate_student_qr():
     data = request.get_json()
-    lat = data.get("lat")
-    lon = data.get("lon")
+    lat = float(data.get("lat"))
+    lon = float(data.get("lon"))
     session_id = data.get("session_id")
     student_id = session["user_id"]
 
@@ -371,8 +371,8 @@ def mark_attendance():
     student_id = payload.get("student_id")
     class_id = payload.get("class_id")
     sess_id = payload.get("session_id")
-    student_lat = payload.get("lat")
-    student_lon = payload.get("lon")
+    student_lat = float(payload.get("lat"))
+    student_lon = float(payload.get("lon"))
 
     # Validate session
     att_sess = AttendanceSession.query.get(sess_id)
