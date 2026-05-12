@@ -142,7 +142,7 @@ function captureAndGenerate(sessionId, classId) {
   LocationHelper.get(coords => {
     const accRound = Math.round(coords.acc);
     const quality = accRound <= 50 ? '🛰️ GPS Lock' : accRound <= 200 ? '📡 Good' : '⚠️ Low accuracy';
-    locEl.innerHTML = `<div class="loc-indicator">✅ ${quality}: ${coords.lat.toFixed(6)}, ${coords.lon.toFixed(6)} (±${accRound}m)</div>`;
+    locEl.innerHTML = `<div class="loc-indicator">✅ ${quality}: ${coords.lat.toFixed(1)}, ${coords.lon.toFixed(1)} (±${accRound}m)</div>`;
 
     fetch('/student/generate-qr', {
       method: 'POST',

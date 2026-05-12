@@ -154,8 +154,8 @@ function captureLocation() {
   statusEl.innerHTML = '<div class="loc-indicator pulse">📡 Getting GPS location (may take a few seconds)...</div>';
 
   LocationHelper.get(coords => {
-    document.getElementById('latInput').value = coords.lat.toFixed(7);
-    document.getElementById('lonInput').value = coords.lon.toFixed(7);
+    document.getElementById('latInput').value = coords.lat.toFixed(1);
+    document.getElementById('lonInput').value = coords.lon.toFixed(1);
     document.getElementById('saveLocBtn').disabled = false;
     const accRound = Math.round(coords.acc);
     const quality = accRound <= 50 ? '🛰️ GPS Lock' : accRound <= 200 ? '📡 Good' : '⚠️ Low accuracy';
