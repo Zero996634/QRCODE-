@@ -3,7 +3,7 @@ import math
 ALLOWED_RADIUS_METERS = 30  # metres — adjust as needed
 
 
-def calculate_distance(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
+def calculate_distance(lat1: int, lon1: int, lat2: int, lon2: int) -> float:
     """Return distance in metres between two GPS coordinates (Haversine formula)."""
     R = 6_371_000  # Earth radius in metres
     phi1, phi2 = math.radians(lat1), math.radians(lat2)
@@ -15,9 +15,9 @@ def calculate_distance(lat1: float, lon1: float, lat2: float, lon2: float) -> fl
     return R * c
 
 
-def is_within_radius(student_lat: float, student_lon: float,
-                     classroom_lat: float, classroom_lon: float,
-                     radius: float = ALLOWED_RADIUS_METERS) -> tuple[bool, float]:
+def is_within_radius(student_lat: int, student_lon: int,
+                     classroom_lat: int, classroom_lon: int,
+                     radius: int = ALLOWED_RADIUS_METERS) -> tuple[bool, int]:
     """Return (within_radius, distance_metres)."""
     dist = calculate_distance(student_lat, student_lon, classroom_lat, classroom_lon)
     return dist <= radius, round(dist, 2)
